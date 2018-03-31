@@ -82,12 +82,12 @@ def new_member(bot: Bot, update: Update):
         new_members = update.effective_message.new_chat_members
         for new_mem in new_members:
             # Give the owner a special welcome
-            if new_mem.id == OWNER_ID:
-                update.effective_message.reply_text("Master is in the houseeee, let's get this party started!")
-                continue
+            #if new_mem.id == OWNER_ID:
+                #update.effective_message.reply_text("Master is in the houseeee, let's get this party started!")
+                #continue
 
             # Don't welcome yourself
-            elif new_mem.id == bot.id:
+            if new_mem.id == bot.id:
                 continue
 
             else:
@@ -138,9 +138,9 @@ def left_member(bot: Bot, update: Update):
                 return
 
             # Give the owner a special goodbye
-            if left_mem.id == OWNER_ID:
-                update.effective_message.reply_text("RIP Master")
-                return
+            #if left_mem.id == OWNER_ID:
+                #update.effective_message.reply_text("RIP Master")
+                #return
 
             # if media goodbye, use appropriate function for it
             if goodbye_type != sql.Types.TEXT and goodbye_type != sql.Types.BUTTON_TEXT:
