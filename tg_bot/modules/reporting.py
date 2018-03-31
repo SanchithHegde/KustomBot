@@ -123,7 +123,7 @@ __mod_name__ = "Reporting"
 
 __help__ = """
  - /report <reason>: reply to a message to report it to admins.
- - @admins: reply to a message to report it to admins.
+ - @admin: reply to a message to report it to admins.
 NOTE: neither of these will get triggered if used by admins
 
 *Admin only:*
