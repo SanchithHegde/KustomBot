@@ -94,7 +94,7 @@ def remove_warn(user_id, chat_id):
             SESSION.close()
             return None
 
-        if warned_user.num_warns >= 0:
+        if warned_user.num_warns > 0:
             warned_user.num_warns -= 1
 
             SESSION.add(warned_user)
