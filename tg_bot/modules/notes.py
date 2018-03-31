@@ -138,7 +138,7 @@ def save_replied(bot: Bot, update: Update):
         msg = bot.forward_message(chat_id=MESSAGE_DUMP, from_chat_id=chat_id, message_id=msg.message_id)
 
     sql.add_note_to_db(chat_id, notename, msg.message_id, is_reply=True)
-    update.effective_message.reply_text("Yas! Added replied message {}".format(notename))
+    update.effective_message.reply_text("Yay! Added replied message {}".format(notename))
 
 
 @run_async
@@ -165,10 +165,10 @@ def save(bot: Bot, update: Update):
         sql.add_note_to_db(chat_id, note_name, note_data, is_reply=False, buttons=buttons)
 
         msg.reply_text(
-            "Yas! Added {note_name}.\nGet it with /get {note_name}, or #{note_name}".format(note_name=note_name))
+            "Yay! Added {note_name}.\nGet it with /get {note_name}, or #{note_name}".format(note_name=note_name))
 
     else:
-        msg.reply_text("Dude, there's no note")
+        msg.reply_text("There's no note!")
 
 
 @run_async

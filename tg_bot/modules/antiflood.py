@@ -33,8 +33,7 @@ def check_flood(bot: Bot, update: Update) -> str:
     if should_ban:
         try:
             chat.kick_member(user.id)
-            msg.reply_text("I like to leave the flooding to natural disasters. But you, you were just a "
-                           "disappointment. Get out.")
+            msg.reply_text("Flood limit reached. User has been banned.")
 
             return "<b>{}:</b>" \
                    "\n#BANNED" \

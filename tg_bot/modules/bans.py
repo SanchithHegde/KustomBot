@@ -40,11 +40,11 @@ def ban(bot: Bot, update: Update, args: List[str]) -> str:
             raise
 
     if is_user_ban_protected(chat, user_id, member):
-        message.reply_text("I really wish I could ban admins...")
+        message.reply_text("Admins cannot be banned!")
         return ""
 
     if user_id == bot.id:
-        update.effective_message.reply_text("I'm not gonna BAN myself, are you crazy?")
+        update.effective_message.reply_text("I'm not gonna ban myself!")
         return ""
 
     log = "<b>{}:</b>" \
@@ -70,7 +70,7 @@ def ban(bot: Bot, update: Update, args: List[str]) -> str:
             LOGGER.warning(update)
             LOGGER.exception("ERROR banning user %s in chat %s (%s) due to %s", user_id, chat.title, chat.id,
                              excp.message)
-            message.reply_text("Well damn, I can't ban that user.")
+            message.reply_text("Well, I can't ban that user.")
 
     return ""
 
@@ -100,11 +100,11 @@ def kick(bot: Bot, update: Update, args: List[str]) -> str:
             raise
 
     if is_user_ban_protected(chat, user_id):
-        message.reply_text("I really wish I could kick admins...")
+        message.reply_text("Admins cannot be kicked!")
         return ""
 
     if user_id == bot.id:
-        update.effective_message.reply_text("Yeahhh I'm not gonna do that")
+        update.effective_message.reply_text("Yeah I'm not gonna do that")
         return ""
 
     res = update.effective_chat.unban_member(user_id)  # unban on current user = kick
@@ -123,7 +123,7 @@ def kick(bot: Bot, update: Update, args: List[str]) -> str:
         return log
 
     else:
-        message.reply_text("Well damn, I can't kick that user.")
+        message.reply_text("Well, I can't kick that user.")
 
     return ""
 
@@ -134,7 +134,7 @@ def kick(bot: Bot, update: Update, args: List[str]) -> str:
 def kickme(bot: Bot, update: Update):
     user_id = update.effective_message.from_user.id
     if is_user_admin(update.effective_chat, user_id):
-        update.effective_message.reply_text("I wish I could... but you're an admin.")
+        update.effective_message.reply_text("I can't, you're an admin!")
         return
 
     res = update.effective_chat.unban_member(user_id)  # unban on current user = kick
@@ -169,15 +169,15 @@ def unban(bot: Bot, update: Update, args: List[str]) -> str:
             raise
 
     if user_id == bot.id:
-        update.effective_message.reply_text("How would I unban myself if I wasn't here...?")
+        update.effective_message.reply_text("How would I unban myself if I wasn't here?")
         return ""
 
     if is_user_in_chat(chat, user_id):
-        update.effective_message.reply_text("Why are you trying to unban someone that's already in the chat?")
+        update.effective_message.reply_text("User already in the chat!")
         return ""
 
     update.effective_chat.unban_member(user_id)
-    message.reply_text("Yep, this user can join!")
+    message.reply_text("User has been unbanned.")
 
     log = "<b>{}:</b>" \
           "\n#UNBANNED" \
