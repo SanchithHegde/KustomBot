@@ -199,6 +199,16 @@ def get_id(bot: Bot, update: Update, args: List[str]):
                     escape_markdown(user1.first_name),
                     user1.id),
                 parse_mode=ParseMode.MARKDOWN)
+        elif update.effective_message.reply_to_message and update.effective_message.reply_to_message.forward_from_chat:
+            user1 = update.effective_message.reply_to_message.from_user
+            user2 = update.effective_message.reply_to_message.forward_from_chat
+            update.effective_message.reply_text(
+                "The channel, {}, has an ID of `{}`.\nThe forwarder, {}, has an ID of `{}`.".format(
+                    escape_markdown(user2.title),
+                    user2.id,
+                    escape_markdown(user1.first_name),
+                    user1.id),
+                parse_mode=ParseMode.MARKDOWN)
         else:
             user = bot.get_chat(user_id)
             update.effective_message.reply_text("{}'s id is `{}`.".format(escape_markdown(user.first_name), user.id),
