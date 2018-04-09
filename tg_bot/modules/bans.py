@@ -102,11 +102,11 @@ def temp_ban(bot: Bot, update: Update, args: List[str]) -> str:
             raise
 
     if is_user_ban_protected(chat, user_id, member):
-        message.reply_text("I really wish I could ban admins...")
+        message.reply_text("Admins cannot be banned!")
         return ""
 
     if user_id == bot.id:
-        update.effective_message.reply_text("I'm not gonna BAN myself, are you crazy?")
+        update.effective_message.reply_text("I'm not gonna ban myself!")
         return ""
 
     split_reason = reason.split(None, 1)
@@ -166,7 +166,7 @@ def temp_ban(bot: Bot, update: Update, args: List[str]) -> str:
             LOGGER.warning(update)
             LOGGER.exception("ERROR banning user %s in chat %s (%s) due to %s", user_id, chat.title, chat.id,
                              excp.message)
-            message.reply_text("Well damn, I can't ban that user.")
+            message.reply_text("Well, I can't ban that user.")
 
     return ""
 
