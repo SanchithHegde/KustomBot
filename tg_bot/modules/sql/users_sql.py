@@ -1,6 +1,6 @@
 import threading
 
-from sqlalchemy import Column, Integer, UnicodeText, String, ForeignKey, UniqueConstraint, func
+from sqlalchemy import Column, Integer, UnicodeText, String, ForeignKey, UniqueConstraint, func, Boolean
 
 from tg_bot import dispatcher
 from tg_bot.modules.sql import BASE, SESSION
@@ -23,6 +23,7 @@ class Chats(BASE):
     __tablename__ = "chats"
     chat_id = Column(String(14), primary_key=True)
     chat_name = Column(UnicodeText, nullable=False)
+    restricted = Column(Boolean, default=False)
 
     def __init__(self, chat_id, chat_name):
         self.chat_id = str(chat_id)
@@ -137,6 +138,20 @@ def get_user_num_chats(user_id):
     finally:
         SESSION.close()
 
+
+def set_restriction(chat_id, restricted):
+    with INSERTION_LOCK:
+        curr = SESSION.query(Chats).get(str(chat_id))
+        curr.restricted = restricted
+
+        SESSION.add(curr)
+        SESSION.commit()
+
+def get_restriction(chat_id):
+    rest = SESSION.query(Chats).get(str(chat_id))
+    SESSION.close()
+
+    return rest.restricted
 
 def num_chats():
     try:
