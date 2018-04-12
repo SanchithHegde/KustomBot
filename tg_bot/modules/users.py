@@ -215,7 +215,15 @@ def chats(bot: Bot, update: Update):
     all_chats = sql.get_all_chats() or []
     chatfile = 'List of chats.\n'
     for chat in all_chats:
-        chatfile += "{} - ({})\n".format(chat.chat_name, chat.chat_id)
+        chat_restricted = sql.get_restriction(chat.chat_id)
+
+        if chat_restricted:
+            chatfile += "{} - ({}) *\n".format(chat.chat_name, chat.chat_id)
+        else:
+            chatfile += "{} - ({})\n".format(chat.chat_name, chat.chat_id)
+
+    if any(chat.restricted == True for chat in all_chats):
+        chatfile += "* - Restricted chat"
 
     with BytesIO(str.encode(chatfile)) as output:
         output.name = "chatlist.txt"
