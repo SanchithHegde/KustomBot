@@ -15,6 +15,7 @@ from tg_bot import dispatcher, OWNER_ID, LOGGER, SUDO_USERS
 from tg_bot.modules.helper_funcs.filters import CustomFilters
 
 USERS_GROUP = 4
+CHAT_BAN_GROUP = 12
 
 
 def get_user_id(username):
@@ -82,32 +83,40 @@ def restrict_group(bot: Bot, update: Update, args: List[str]) -> str:
             if any(chat.chat_id == chat_id for chat in all_chats):
                 chat_restricted = sql.get_restriction(chat_id)    
                 if not chat_restricted:
-                    chat_title = bot.get_chat(chat_id).title
+                    try:
+                        chat_title = bot.get_chat(chat_id).title
 
-                    sudo_users_list = "<b>My Admins:</b>"
-                    for user in SUDO_USERS:
-                        name = "<a href=\"tg://user?id={}\">{}</a>".format(user, bot.get_chat(user).first_name)
-                        sudo_users_list += "\n - {}".format(name)
+                        sudo_users_list = "<b>My Admins:</b>"
+                        for user in SUDO_USERS:
+                            name = "<a href=\"tg://user?id={}\">{}</a>".format(user, bot.get_chat(user).first_name)
+                            sudo_users_list += "\n - {}".format(name)
 
-                    bot.send_message(chat_id = chat_id,
-                                     text = "I have been restricted by my admins from this chat. "
-                                            "Request any of my admins to add me to this chat.\n\n"
-                                            "{admins_list}".format(admins_list = sudo_users_list),
-                                     parse_mode = ParseMode.HTML)
+                        bot.send_message(chat_id = chat_id,
+                                         text = "I have been restricted by my admins from this chat. "
+                                                "Request any of my admins to add me to this chat.\n\n"
+                                                "{admins_list}".format(admins_list = sudo_users_list),
+                                         parse_mode = ParseMode.HTML)
 
-                    bot.leave_chat(chat_id)
+                        bot.leave_chat(chat_id)
 
-                    sql.set_restriction(chat_id, restricted = True)
+                        sql.set_restriction(chat_id, restricted = True)
 
-                    message.reply_text("Successfully left chat <b>{}</b>!".format(chat_title),
-                                   parse_mode = ParseMode.HTML)
+                        message.reply_text("Successfully left chat <b>{}</b>!".format(chat_title),
+                                           parse_mode = ParseMode.HTML)
             
-                    # Report to sudo users
-                    restrictor = update.effective_user  # type: Optional[User]
-                    send_to_list(bot, SUDO_USERS,
-                                 "{} has restricted me from being added to the chat <b>{}</b>."
-                                 .format(mention_html(restrictor.id, restrictor.first_name), chat_title),
-                                 html=True)
+                        # Report to sudo users
+                        restrictor = update.effective_user  # type: Optional[User]
+                        send_to_list(bot, SUDO_USERS,
+                                     "{} has restricted me from being added to the chat <b>{}</b>."
+                                     .format(mention_html(restrictor.id, restrictor.first_name), chat_title),
+                                     html=True)
+
+                    except BadRequest as excp:
+                        if excp.message == "Chat not found":
+                            message.reply_text("Looks like I'm no longer a part of that chat!")
+                            return
+                        else:
+                            raise
 
                 else:
                     message.reply_text("I'm already restricted from that chat!")
@@ -263,5 +272,5 @@ dispatcher.add_handler(USER_HANDLER, USERS_GROUP)
 dispatcher.add_handler(BROADCAST_HANDLER)
 dispatcher.add_handler(CHATLIST_HANDLER)
 dispatcher.add_handler(RESTRICT_GROUP_HANDLER)
-dispatcher.add_handler(NEW_MEMBER_HANDLER)
+dispatcher.add_handler(NEW_MEMBER_HANDLER, CHAT_BAN_GROUP)
 dispatcher.add_handler(UNRESTRICT_GROUP_HANDLER)
