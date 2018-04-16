@@ -139,19 +139,34 @@ def get_user_num_chats(user_id):
         SESSION.close()
 
 
-def set_restriction(chat_id, restricted):
+def get_chatname_by_chatid (chat_id):
+    try:
+        return SESSION.query(Chats).get(str(chat_id)).chat_name
+    finally:
+        SESSION.close()
+
+
+def set_restriction(chat_id, chat_name, restricted):
     with INSERTION_LOCK:
         curr = SESSION.query(Chats).get(str(chat_id))
+        if not curr:
+            curr = Chats(str(chat_id), chat_name)
+    
         curr.restricted = restricted
 
         SESSION.add(curr)
         SESSION.commit()
 
+
 def get_restriction(chat_id):
     rest = SESSION.query(Chats).get(str(chat_id))
     SESSION.close()
 
-    return rest.restricted
+    if rest:
+        return rest.restricted
+
+    return False
+
 
 def num_chats():
     try:

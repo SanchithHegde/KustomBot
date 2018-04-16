@@ -1,3 +1,4 @@
+import html
 from io import BytesIO
 from time import sleep
 from typing import Optional, List
@@ -70,73 +71,70 @@ def broadcast(bot: Bot, update: Update):
 
 @run_async
 def restrict_group(bot: Bot, update: Update, args: List[str]) -> str:
-    message = update.effective_message
+    message = update.effective_message  # type: Optional[Message]
+    chat_id_correct = False
 
     # Check if there is only one argument
-    if len(args) == 1:
-        chat_id = args[0]
-
-        # Check if chat_id is valid
-        if chat_id.startswith('-'):
-            # Check if chat_id is in bot database
-            all_chats = sql.get_all_chats() or []
-            if any(chat.chat_id == chat_id for chat in all_chats):
-                chat_restricted = sql.get_restriction(chat_id)    
-                if not chat_restricted:
-                    try:
-                        chat_title = bot.get_chat(chat_id).title
-
-                        sudo_users_list = "<b>My Admins:</b>"
-                        for user in SUDO_USERS:
-                            name = "<a href=\"tg://user?id={}\">{}</a>".format(user, bot.get_chat(user).first_name)
-                            sudo_users_list += "\n - {}".format(name)
-
-                        bot.send_message(chat_id = chat_id,
-                                         text = "I have been restricted by my admins from this chat. "
-                                                "Request any of my admins to add me to this chat.\n\n"
-                                                "{admins_list}".format(admins_list = sudo_users_list),
-                                         parse_mode = ParseMode.HTML)
-
-                        bot.leave_chat(chat_id)
-
-                        sql.set_restriction(chat_id, restricted = True)
-
-                        message.reply_text("Successfully left chat <b>{}</b>!".format(chat_title),
-                                           parse_mode = ParseMode.HTML)
-            
-                        # Report to sudo users
-                        restrictor = update.effective_user  # type: Optional[User]
-                        send_to_list(bot, SUDO_USERS,
-                                     "{} has restricted me from being added to the chat <b>{}</b>."
-                                     .format(mention_html(restrictor.id, restrictor.first_name), chat_title),
-                                     html=True)
-
-                    except BadRequest as excp:
-                        if excp.message == "Chat not found":
-                            message.reply_text("Looks like I'm no longer a part of that chat!")
-                            return
-                        else:
-                            raise
-
-                else:
-                    message.reply_text("I'm already restricted from that chat!")
-
-            else:
-                message.reply_text("I can't seem to find the chat in my database. "
-                                   "Use /chatlist to obtain a list of chats in my database.")
-    
-        else:
-            message.reply_text("Invalid chat id! Make sure you include the '-' sign in the chat id.")
-
-    else:
+    if not len(args) == 1:
         message.reply_text("Incorrect number of arguments. Please use `/restrict chat_id`.",
-                           parse_mode = ParseMode.MARKDOWN)
+                           parse_mode=ParseMode.MARKDOWN)
+
+    chat_id = args[0]
+
+    # Check if chat_id is valid
+    if len(args) == 1 and not chat_id.startswith('-'):
+        message.reply_text("Invalid chat id! Make sure you include the '-' sign in the chat id.")
+
+    # Check if chat_id is in bot database
+    all_chats = sql.get_all_chats() or []
+    if len(args) == 1 and chat_id.startswith('-') and not any(chat.chat_id == chat_id for chat in all_chats):
+        message.reply_text("I can't seem to find the chat in my database. "
+                           "Use /chatlist to obtain a list of chats in my database.")
+
+    if len(args) == 1 and chat_id.startswith('-') and any(chat.chat_id == chat_id for chat in all_chats):
+        chat_id_correct = True
+
+    chat_restricted = sql.get_restriction(chat_id)
+    if chat_id_correct and not chat_restricted:
+        try:
+            chat_title = html.escape(bot.get_chat(chat_id).title)
+        except BadRequest as excp:
+            if excp.message == "Chat not found":
+                message.reply_text("Looks like I'm no longer a part of that chat!")
+                return
+            else:
+                raise
+
+        sudo_users_list = "<b>My Admins:</b>"
+        for user in SUDO_USERS:
+            name = mention_html(user, bot.get_chat(user).first_name)
+            sudo_users_list += "\n - {}".format(name)
+
+        bot.send_message(chat_id = chat_id,
+                         text = "I have been restricted by my admins from this chat. "
+                                "Request any of my admins to add me to this chat.\n\n"
+                                "{admins_list}".format(admins_list = sudo_users_list), parse_mode=ParseMode.HTML)
+
+        bot.leave_chat(chat_id)
+
+        sql.set_restriction(chat_id, chat_title, restricted=True)
+
+        message.reply_text("Successfully left chat <b>{}</b>!".format(chat_title), parse_mode=ParseMode.HTML)
+            
+        # Report to sudo users
+        restrictor = update.effective_user  # type: Optional[User]
+        send_to_list(bot, SUDO_USERS, "{} has restricted me from being added to the chat <b>{}</b>."
+                     .format(mention_html(restrictor.id, restrictor.first_name), chat_title), html=True)
+                    
+    elif chat_id_correct and chat_restricted:
+        message.reply_text("I'm already restricted from that chat!")
+                
 
 @run_async
 def new_member(bot: Bot, update: Update): # Leave group when added to restricted group
     chat = update.effective_chat  # type: Optional[Chat]
-    new_members = update.effective_message.new_chat_members
-    user = update.effective_user
+    new_members = update.effective_message.new_chat_members  # type: Optional[User]
+    user = update.effective_user  # type: Optional[User]
 
     if sql.get_restriction(chat.id):
         if not user.id in SUDO_USERS:
@@ -145,58 +143,58 @@ def new_member(bot: Bot, update: Update): # Leave group when added to restricted
                                                     "Request any of my admins to add me to this chat.")
                 bot.leave_chat(chat.id)
 
-        # Unrestrict group if a sudo user adds bot
+        # Unrestrict group if a sudo user adds bot to the chat
         else:
             if any(new_mem.id == bot.id for new_mem in new_members):
-                sql.set_restriction(chat.id, restricted = False)
+                sql.set_restriction(chat.id, chat.title, restricted=False)
 
                 # Report to sudo users
-                send_to_list(bot, SUDO_USERS,
-                             "{} has added me to the chat <b>{}</b> and removed my restrictions."
-                             .format(mention_html(user.id, user.first_name), chat.title),
-                             html=True)
+                send_to_list(bot, SUDO_USERS, "{} has added me to the chat <b>{}</b> and removed my restrictions."
+                             .format(mention_html(user.id, user.first_name), chat.title), html=True)
+
 
 @run_async
 def unrestrict_group(bot: Bot, update: Update, args: List[str]) -> str:
-    message = update.effective_message
+    message = update.effective_message  # type: Optional[Message]
+    chat_id_correct = False
     
     # Check if there is only one argument
-    if len(args) == 1:
-        chat_id = args[0]
-
-        # Check if chat_id is valid
-        if chat_id.startswith('-'):
-            # Check if chat_id is in bot database
-            all_chats = sql.get_all_chats() or []
-            if any(chat.chat_id == chat_id for chat in all_chats):
-                chat_restricted = sql.get_restriction(chat_id)
-                if chat_restricted:
-                    sql.set_restriction(chat_id, restricted = False)
-            
-                    message.reply_text("Successfully removed all restrictions on the chat with id `{}`"
-                                       .format(chat_id), parse_mode = ParseMode.MARKDOWN)
-                
-                    # Report to sudo users
-                    unrestrictor = update.effective_user  # type: Optional[User]
-                    send_to_list(bot, SUDO_USERS,
-                                 "{} has removed my restrictions on the chat with id <code>{}</code>."
-                                 .format(mention_html(unrestrictor.id, unrestrictor.first_name), chat_id),
-                                 html=True)
-            
-                else:
-                    message.reply_text("I'm not restricted from that chat!")
-        
-            else:
-                message.reply_text("I can't seem to find the chat in my database. "
-                                   "Use /chatlist to obtain a list of chats in my database.")
-        
-    
-        else:
-            message.reply_text("Invalid chat id! Make sure you include the '-' sign in the chat id.")
-
-    else:
+    if not len(args) == 1:
         message.reply_text("Incorrect number of arguments. Please use `/unrestrict chat_id`.",
-                           parse_mode = ParseMode.MARKDOWN)
+                           parse_mode=ParseMode.MARKDOWN)
+
+    chat_id = args[0]
+
+    # Check if chat_id is valid
+    if len(args) == 1 and not chat_id.startswith('-'):
+        message.reply_text("Invalid chat id! Make sure you include the '-' sign in the chat id.")
+
+    # Check if chat_id is in bot database
+    all_chats = sql.get_all_chats() or []
+    if len(args) == 1 and chat_id.startswith('-') and not any(chat.chat_id == chat_id for chat in all_chats):
+        message.reply_text("I can't seem to find the chat in my database. "
+                           "Use /chatlist to obtain a list of chats in my database.")
+                            
+    if len(args) == 1 and chat_id.startswith('-') and any(chat.chat_id == chat_id for chat in all_chats):
+        chat_id_correct = True
+    
+    chat_restricted = sql.get_restriction(chat_id)            
+    if chat_id_correct and chat_restricted:
+        chat_title = html.escape(sql.get_chatname_by_chatid(chat_id))
+
+        sql.set_restriction(chat_id, chat_title, restricted=False)
+            
+        message.reply_text("Successfully removed all restrictions on the chat <b>{}</b>!"
+                           .format(chat_title), parse_mode=ParseMode.HTML)
+                
+        # Report to sudo users
+        unrestrictor = update.effective_user  # type: Optional[User]
+        send_to_list(bot, SUDO_USERS, "{} has removed my restrictions on the chat <b>{}</b>."
+                     .format(mention_html(unrestrictor.id, unrestrictor.first_name), chat_title), html=True)
+            
+    elif chat_id_correct and not chat_restricted:
+        message.reply_text("I'm not restricted from that chat!")
+
 
 @run_async
 def log_user(bot: Bot, update: Update):
@@ -227,12 +225,12 @@ def chats(bot: Bot, update: Update):
         chat_restricted = sql.get_restriction(chat.chat_id)
 
         if chat_restricted:
-            chatfile += "{} - ({}) *\n".format(chat.chat_name, chat.chat_id)
+            chatfile += "{} - ({}) [R]\n".format(chat.chat_name, chat.chat_id)
         else:
             chatfile += "{} - ({})\n".format(chat.chat_name, chat.chat_id)
 
     if any(chat.restricted == True for chat in all_chats):
-        chatfile += "* - Restricted chat"
+        chatfile += "[R] - Restricted chat"
 
     with BytesIO(str.encode(chatfile)) as output:
         output.name = "chatlist.txt"
@@ -264,13 +262,13 @@ USER_HANDLER = MessageHandler(Filters.all & Filters.group, log_user)
 CHATLIST_HANDLER = CommandHandler("chatlist", chats, filters=CustomFilters.sudo_filter)
 RESTRICT_GROUP_HANDLER = CommandHandler("restrict", restrict_group, pass_args=True, 
                                         filters=CustomFilters.sudo_filter)
-NEW_MEMBER_HANDLER = MessageHandler(Filters.status_update.new_chat_members, new_member)
 UNRESTRICT_GROUP_HANDLER = CommandHandler("unrestrict", unrestrict_group, pass_args=True, 
                                           filters=CustomFilters.sudo_filter)
+NEW_MEMBER_HANDLER = MessageHandler(Filters.status_update.new_chat_members, new_member)
 
 dispatcher.add_handler(USER_HANDLER, USERS_GROUP)
 dispatcher.add_handler(BROADCAST_HANDLER)
 dispatcher.add_handler(CHATLIST_HANDLER)
 dispatcher.add_handler(RESTRICT_GROUP_HANDLER)
-dispatcher.add_handler(NEW_MEMBER_HANDLER, CHAT_BAN_GROUP)
 dispatcher.add_handler(UNRESTRICT_GROUP_HANDLER)
+dispatcher.add_handler(NEW_MEMBER_HANDLER, CHAT_BAN_GROUP)
