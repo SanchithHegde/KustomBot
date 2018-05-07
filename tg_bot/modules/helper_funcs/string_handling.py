@@ -17,7 +17,9 @@ MATCH_MD = re.compile(r'\*(.*?)\*|'
                       r'(?<!\\)(\[.*?\])(\(.*?\))|'
                       r'(?P<esc>[*_`\[])')
 
-BTN_URL_REGEX = re.compile(r"(?<!\\)(\[([^\[]+?)\]\(buttonurl:(?:/{0,2})(.+?)(:same)?\))")
+# regex to find []() links -> hyperlinks/buttons
+LINK_REGEX = re.compile(r'(?<!\\)\[.+?\]\((.*?)\)')
+BTN_URL_REGEX = re.compile(r"(\[([^\[]+?)\]\(buttonurl:(?:/{0,2})(.+?)(:same)?\))")
 
 
 def _selective_escape(to_parse: str) -> str:
@@ -64,14 +66,15 @@ def markdown_parser(txt: str, entities: Dict[MessageEntity, str] = None, offset:
     if not txt:
         return ""
 
-    # regex to find []() links -> hyperlinks/buttons
-    pattern = re.compile(r'(?<!\\)\[.+?\]\((.*?)\)')
     prev = 0
     res = ""
     # Loop over all message entities, and:
     # reinsert code
     # escape free-standing urls
     for ent, ent_text in entities.items():
+        if ent.offset < -offset:
+            continue
+
         start = ent.offset + offset  # start of entity
         end = ent.offset + offset + ent.length - 1  # end of entity
 
@@ -84,7 +87,7 @@ def markdown_parser(txt: str, entities: Dict[MessageEntity, str] = None, offset:
 
             # URL handling -> do not escape if in [](), escape otherwise.
             if ent.type == "url":
-                if any(match.start(1) <= start and end <= match.end(1) for match in pattern.finditer(txt)):
+                if any(match.start(1) <= start and end <= match.end(1) for match in LINK_REGEX.finditer(txt)):
                     continue
                 # else, check the escapes between the prev and last and forcefully escape the url to avoid mangling
                 else:
@@ -117,10 +120,23 @@ def button_markdown_parser(txt: str, entities: Dict[MessageEntity, str] = None, 
     note_data = ""
     buttons = []
     for match in BTN_URL_REGEX.finditer(markdown_note):
-        # create a thruple with button label, url, and newline status
-        buttons.append((match.group(2), match.group(3), bool(match.group(4))))
-        note_data += markdown_note[prev:match.start(1)]
-        prev = match.end(1)
+        # Check if btnurl is escaped
+        n_escapes = 0
+        to_check = match.start(1) - 1
+        while to_check > 0 and markdown_note[to_check] == "\\":
+            n_escapes += 1
+            to_check -= 1
+
+        # if even, not escaped -> create button
+        if n_escapes % 2 == 0:
+            # create a thruple with button label, url, and newline status
+            buttons.append((match.group(2), match.group(3), bool(match.group(4))))
+            note_data += markdown_note[prev:match.start(1)]
+            prev = match.end(1)
+        # if odd, escaped -> move along
+        else:
+            note_data += markdown_note[prev:to_check]
+            prev = match.start(1) - 1
     else:
         note_data += markdown_note[prev:]
 
