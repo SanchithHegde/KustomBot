@@ -139,9 +139,12 @@ def get_user_num_chats(user_id):
         SESSION.close()
 
 
-def get_chatname_by_chatid (chat_id):
+def get_chatname_by_chatid(chat_id):
     try:
-        return SESSION.query(Chats).get(str(chat_id)).chat_name
+        chat = SESSION.query(Chats).get(str(chat_id))
+        if chat:
+            return chat.chat_name
+        return None
     finally:
         SESSION.close()
 
